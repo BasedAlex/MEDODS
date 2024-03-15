@@ -36,7 +36,6 @@ func (app *Config) Ping(w http.ResponseWriter, r *http.Request) {
 }
 
 
-
 func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -75,7 +74,6 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -83,10 +81,13 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 	collection := client.Database("logs").Collection("refresh_token")
 
 	var entry data.RefreshToken
+	
+	fmt.Println(claims)
 
 	err = collection.FindOne(ctx, bson.M{"userid": claims["userID"]}).Decode(&entry)
+	fmt.Println()
 	if err != nil {
-		log.Println("error finding",err)
+		log.Println("error getting", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -97,20 +98,25 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	fmt.Println(entry.Token, string(requestRefreshToken))
+
 	err = bcrypt.CompareHashAndPassword([]byte(entry.Token), requestRefreshToken)
 	if err != nil {
-		log.Println("wrong refresh token",err)
+		log.Println("wrong refresh token", err)
+		log.Println(entry.Token, string(requestRefreshToken))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	
+
+	reqUserID, ok := claims["userID"].(string)
+	if !ok {
+		log.Println("Not a string", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	newAuthToken := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
-		"userID": req.UserID,
+		"userID": reqUserID,
 	})
-
-
 
 	authTokenString, err := newAuthToken.SignedString(secretString)
 	if err != nil {
@@ -121,7 +127,6 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	refreshTokenString := generateRandomString(20)
 
-
 	bcryptedRefreshToken, err := bcrypt.GenerateFromPassword([]byte(refreshTokenString), 10)
 	if err != nil {
 		log.Println("Error creating token", err)
@@ -131,10 +136,15 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 	base64RefreshToken := base64.StdEncoding.EncodeToString([]byte(refreshTokenString))
 
 
-	_, err = collection.InsertOne(context.TODO(), data.RefreshToken{
-		Token: string(bcryptedRefreshToken),
-		UserID: req.UserID,
-	})
+	fmt.Println("user_id is:", claims["userID"] )
+	fmt.Println("bcrypted refresh token", string(bcryptedRefreshToken))
+
+	
+	filter := bson.D{{"userid", reqUserID}}
+
+	update := bson.D{{"$set", bson.D{{"token", string(bcryptedRefreshToken)}}}}
+
+	_, err = collection.UpdateOne(context.TODO(), filter, update)
 
 	if err != nil {
 		log.Println("Error inserting", err)
@@ -155,7 +165,6 @@ func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
 }
 
 
@@ -183,11 +192,9 @@ func (app *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		"userID": req.UserID,
 	})
 
-	// possible logs
 	collection := client.Database("logs").Collection("refresh_token")
 
 	secretString := []byte("supersecretstring")
-
 
 	authTokenString, err := authToken.SignedString(secretString)
 	if err != nil {
@@ -198,7 +205,6 @@ func (app *Config) Auth(w http.ResponseWriter, r *http.Request) {
 
 	refreshTokenString := generateRandomString(20)
 
-
 	bcryptedRefreshToken, err := bcrypt.GenerateFromPassword([]byte(refreshTokenString), 10)
 	if err != nil {
 		log.Println("Error creating token", err)
@@ -207,12 +213,11 @@ func (app *Config) Auth(w http.ResponseWriter, r *http.Request) {
 	}
 	base64RefreshToken := base64.StdEncoding.EncodeToString([]byte(refreshTokenString))
 
-	// r.Context()
-
 	_, err = collection.InsertOne(context.TODO(), data.RefreshToken{
 		Token: string(bcryptedRefreshToken),
 		UserID: req.UserID,
 	})
+
 
 	if err != nil {
 		log.Println("Error inserting", err)

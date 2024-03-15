@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/basedalex/medods-test/data"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -22,6 +23,11 @@ var client *mongo.Client
 type Config struct {
 	Models data.Models
 }
+
+// func (app *Config) Init() {
+
+
+// }
 
 func main() {
 	// connect to mongo
@@ -53,25 +59,26 @@ func main() {
 		Handler: app.routes(),
 	}
 
+	coll := client.Database("logs").Collection("refresh_token")
+	
+	indexName, err := coll.Indexes().CreateOne(
+		context.Background(),
+		mongo.IndexModel{
+			Keys:    bson.D{{Key: "userid", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	if err != nil {
+		log.Print(err, indexName)
+	}
+
 	err = srv.ListenAndServe()
-	// err = http.ListenAndServe(webPort, app.Routes())
+
 	if err != nil {
 		log.Panic()
 	}
 
 }
-
-// func (app *Config) serve() {
-
-// 	srv := &http.Server{
-// 		Addr: fmt.Sprintf(":%s", webPort),
-// 		Handler: app.routes(),
-// 	}
-// 	err := srv.ListenAndServe()
-// 	if err != nil {
-// 		log.Panic()
-// 	}
-// }
 
 func connectToMongo() (*mongo.Client, error) {
 
@@ -81,8 +88,6 @@ func connectToMongo() (*mongo.Client, error) {
 	clientOptions.SetAuth(options.Credential{
 		Username: "admin",
 		Password: "password",
-		// AuthMechanism: "SCRAM-SHA-1",
-		// AuthSource: "admin",
 	})
 
 	// connect 

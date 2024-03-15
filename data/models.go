@@ -20,5 +20,5 @@ type Models struct {
 
 type RefreshToken struct {
 	Token string `bson:refresh_token json:"refresh_token"`
-	UserID string `bson:_id json:"user_id"`
+	UserID string `bson:user_id json:"user_id"`
 }
