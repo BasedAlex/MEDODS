@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -34,7 +33,6 @@ type AuthResponse struct {
 func (app *Config) Ping(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "hello")
 }
-
 
 func (app *Config) Refresh(w http.ResponseWriter, r *http.Request) {
 
@@ -239,16 +237,4 @@ func (app *Config) Auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-}
-
-func generateRandomString(length int) string {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    seed := rand.NewSource(time.Now().UnixNano())
-    random := rand.New(seed)
-
-    result := make([]byte, length)
-    for i := range result {
-        result[i] = charset[random.Intn(len(charset))]
-    }
-    return string(result)
 }

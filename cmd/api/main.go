@@ -24,11 +24,6 @@ type Config struct {
 	Models data.Models
 }
 
-// func (app *Config) Init() {
-
-
-// }
-
 func main() {
 	// connect to mongo
 	mongoClient, err := connectToMongo()
@@ -77,7 +72,6 @@ func main() {
 	if err != nil {
 		log.Panic()
 	}
-
 }
 
 func connectToMongo() (*mongo.Client, error) {
@@ -91,7 +85,6 @@ func connectToMongo() (*mongo.Client, error) {
 	})
 
 	// connect 
-
 	c, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
 		log.Println("Error connecting:", err)
@@ -101,5 +94,4 @@ func connectToMongo() (*mongo.Client, error) {
 	log.Println("Connected to mongo!")
 
 	return c, nil
-
 }
